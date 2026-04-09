@@ -7,45 +7,37 @@ import { useCostData, ClusterData, NamespaceData } from "@/hooks/useCostData";
 import { Chart } from "./Chart";
 import { DataTable } from "./DataTable";
 import { Breadcrumb } from "./Breadcrumb";
+import { SkeletonChart, SkeletonTable } from "./Skeleton";
 
 type Level = "cluster" | "namespace" | "pod";
 
 export default function FeatureSection() {
-  const { data, isLoading, isError } = useCostData();
+  const { data, isLoading, isError, refetch } = useCostData();
 
   const [level, setLevel] = useState<Level>("cluster");
-  const [path, setPath] = useState<string[]>([]); // [clusterId, namespaceId]
+  const [path, setPath] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { items, breadcrumbLabels } = useMemo(() => {
     if (!data) return { items: [], breadcrumbLabels: [] };
 
-    if (level === "cluster") {
-      return { items: data, breadcrumbLabels: [] };
-    }
+    if (level === "cluster") return { items: data, breadcrumbLabels: [] };
 
     const cluster = data.find((c) => c.id === path[0]) as ClusterData;
     if (!cluster) return { items: [], breadcrumbLabels: [] };
 
     if (level === "namespace") {
-      return {
-        items: cluster.namespaces,
-        breadcrumbLabels: [cluster.name],
-      };
+      return { items: cluster.namespaces, breadcrumbLabels: [cluster.name] };
     }
 
     const ns = cluster.namespaces.find((n) => n.id === path[1]) as NamespaceData;
     if (!ns) return { items: [], breadcrumbLabels: [] };
 
-    return {
-      items: ns.pods,
-      breadcrumbLabels: [cluster.name, ns.name],
-    };
+    return { items: ns.pods, breadcrumbLabels: [cluster.name, ns.name] };
   }, [data, level, path]);
 
   function handleSelect(id: string) {
     setSelectedId(id);
-
     setTimeout(() => {
       setSelectedId(null);
       if (level === "cluster") {
@@ -59,38 +51,18 @@ export default function FeatureSection() {
   }
 
   function handleBreadcrumb(index: number) {
-    // index -1 = root, 0 = cluster level, 1 = namespace level
-    if (index < 0) {
-      setLevel("cluster");
-      setPath([]);
-    } else if (index === 0) {
-      setLevel("namespace");
-      setPath((p) => [p[0]]);
-    }
+    if (index < 0) { setLevel("cluster"); setPath([]); }
+    else if (index === 0) { setLevel("namespace"); setPath((p) => [p[0]]); }
     setSelectedId(null);
-  }
-
-  if (isLoading) {
-    return (
-      <div style={{ display: "flex", justifyContent: "center", padding: "80px 0", color: tokens.colors.muted }}>
-        Loading cost data...
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div style={{ display: "flex", justifyContent: "center", padding: "80px 0", color: tokens.colors.muted }}>
-        Failed to load data. Please refresh.
-      </div>
-    );
   }
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      aria-label="Cloud cost explorer"
       style={{
         maxWidth: "960px",
         margin: "0 auto",
@@ -101,7 +73,13 @@ export default function FeatureSection() {
       }}
     >
       {/* Header */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+        style={{ display: "flex", flexDirection: "column", gap: "6px" }}
+      >
         <h2
           style={{
             margin: 0,
@@ -109,50 +87,116 @@ export default function FeatureSection() {
             fontWeight: 700,
             color: tokens.colors.text,
             letterSpacing: "-0.02em",
+            lineHeight: 1.2,
           }}
         >
           Cloud Cost Explorer
         </h2>
         <p style={{ margin: 0, fontSize: "clamp(13px, 1.6vw, 15px)", color: tokens.colors.muted }}>
-          Drill down from clusters to namespaces to pods
+          Drill down from clusters → namespaces → pods
         </p>
-      </div>
+      </motion.div>
 
-      {/* Breadcrumb */}
-      <Breadcrumb path={breadcrumbLabels} onNavigate={handleBreadcrumb} />
+      {/* Loading skeleton */}
+      {isLoading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          style={{ display: "flex", flexDirection: "column", gap: "24px" }}
+        >
+          {/* fake breadcrumb */}
+          <div style={{ display: "flex", gap: "8px" }}>
+            {["80px", "60px", "60px"].map((w, i) => (
+              <motion.div
+                key={i}
+                animate={{ opacity: [0.4, 0.8, 0.4] }}
+                transition={{ duration: 1.6, repeat: Infinity, delay: i * 0.1, ease: "easeInOut" }}
+                style={{ width: w, height: "20px", borderRadius: "999px", background: tokens.colors.border }}
+              />
+            ))}
+          </div>
+          <SkeletonChart />
+          <SkeletonTable />
+        </motion.div>
+      )}
 
-      {/* Level badge */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        {(["cluster", "namespace", "pod"] as Level[]).map((l) => (
-          <span
-            key={l}
+      {/* Error state */}
+      {isError && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "16px",
+            padding: "48px 24px",
+            border: `1px solid ${tokens.colors.border}`,
+            borderRadius: tokens.radius.lg,
+            background: tokens.colors.surface,
+            textAlign: "center",
+          }}
+        >
+          <span style={{ fontSize: "32px" }} aria-hidden>⚠️</span>
+          <p style={{ margin: 0, fontSize: "clamp(14px, 2vw, 16px)", color: tokens.colors.text, fontWeight: 600 }}>
+            Failed to load cost data
+          </p>
+          <p style={{ margin: 0, fontSize: "13px", color: tokens.colors.muted }}>
+            Check your connection and try again.
+          </p>
+          <button
+            onClick={() => refetch()}
             style={{
-              padding: "3px 10px",
+              padding: "8px 20px",
               borderRadius: "999px",
-              fontSize: "11px",
+              border: `1px solid ${tokens.colors.accent}`,
+              background: "transparent",
+              color: tokens.colors.accent,
+              fontSize: "13px",
               fontWeight: 600,
-              textTransform: "capitalize",
-              background: level === l ? tokens.colors.accent : tokens.colors.surface,
-              color: level === l ? tokens.colors.bg : tokens.colors.muted,
-              border: `1px solid ${level === l ? tokens.colors.accent : tokens.colors.border}`,
-              transition: "all 0.2s",
+              cursor: "pointer",
+              transition: "background 0.15s",
             }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = tokens.colors.accentDim; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
           >
-            {l}
-          </span>
-        ))}
-      </div>
+            Retry
+          </button>
+        </motion.div>
+      )}
 
-      {/* Chart */}
-      <Chart
-        items={items}
-        selectedId={selectedId}
-        level={level}
-        onSelect={handleSelect}
-      />
+      {/* Main content */}
+      {data && (
+        <>
+          <Breadcrumb path={breadcrumbLabels} onNavigate={handleBreadcrumb} />
 
-      {/* Table */}
-      <DataTable rows={items} level={level} />
+          {/* Level pills */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            {(["cluster", "namespace", "pod"] as Level[]).map((l) => (
+              <motion.span
+                key={l}
+                layout
+                style={{
+                  padding: "3px 10px",
+                  borderRadius: "999px",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  textTransform: "capitalize",
+                  background: level === l ? tokens.colors.accent : tokens.colors.surface,
+                  color: level === l ? tokens.colors.bg : tokens.colors.muted,
+                  border: `1px solid ${level === l ? tokens.colors.accent : tokens.colors.border}`,
+                  transition: "all 0.2s",
+                }}
+              >
+                {l}
+              </motion.span>
+            ))}
+          </div>
+
+          <Chart items={items} selectedId={selectedId} level={level} onSelect={handleSelect} />
+          <DataTable rows={items} level={level} />
+        </>
+      )}
     </motion.section>
   );
 }
