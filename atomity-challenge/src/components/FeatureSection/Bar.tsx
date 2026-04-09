@@ -21,11 +21,7 @@ interface Props {
   network: number;
 }
 
-const BAR_MAX_HEIGHT = 180;
-const PILL_1_H = 10;
-const PILL_2_H = 10;
-const PILL_GAP = 6;
-const PILLS_TOTAL = PILL_1_H + PILL_GAP + PILL_2_H + 10;
+const BAR_MAX_HEIGHT = 200;
 
 const BREAKDOWN = [
   { key: "cpu"     as const, label: "CPU" },
@@ -34,13 +30,23 @@ const BREAKDOWN = [
   { key: "network" as const, label: "Network" },
 ];
 
+const pillStyle: React.CSSProperties = {
+  position: "absolute",
+  left: "50%",
+  transform: "translateX(-50%)",
+  width: "75%",
+  height: "8px",
+  borderRadius: "999px",
+  background: "linear-gradient(to right, rgba(255,255,255,0.15), rgba(255,255,255,0.5), rgba(255,255,255,0.15))",
+  pointerEvents: "none",
+};
+
 export function Bar({
   label, value, maxValue, index, isClickable, isSelected, isDimmed, onClick,
   cpu, ram, storage, network,
 }: Props) {
   const [hovered, setHovered] = useState(false);
-  const bodyH = Math.max(40, (value / maxValue) * (BAR_MAX_HEIGHT - PILLS_TOTAL));
-  const totalH = bodyH + PILLS_TOTAL;
+  const heightPx = Math.max(24, (value / maxValue) * BAR_MAX_HEIGHT);
   const breakdown = { cpu, ram, storage, network };
 
   return (
@@ -78,7 +84,7 @@ export function Bar({
         color: hovered ? tokens.colors.text : tokens.colors.muted,
         fontVariantNumeric: "tabular-nums",
         fontWeight: hovered ? 700 : 500,
-        transition: "color 0.15s, font-weight 0.15s",
+        transition: "color 0.15s",
       }}>
         <AnimatedNumber value={value} prefix="$" />
       </span>
@@ -104,58 +110,59 @@ export function Bar({
           }} />
         ))}
 
-        {/* Bar group */}
+        {/* Bar — single solid block */}
         <motion.div
           initial={{ height: 0, opacity: 0 }}
-          animate={{ height: totalH, opacity: 1 }}
+          animate={{
+            height: heightPx,
+            opacity: 1,
+            y: hovered ? -4 : 0,
+            scale: hovered ? 1.05 : isSelected ? 1.03 : 1,
+            filter: hovered ? "brightness(1.05)" : "brightness(1)",
+          }}
           transition={{
             height: { delay: index * 0.08, duration: 0.55, ease: [0.22, 1, 0.36, 1] },
             opacity: { delay: index * 0.08, duration: 0.3 },
+            y: { duration: 0.2, ease: "easeOut" },
+            scale: { duration: 0.2, ease: "easeOut" },
+            filter: { duration: 0.2 },
           }}
-          whileHover={isClickable ? { y: -4, scale: 1.04, filter: "brightness(1.04)" } : { y: -2 }}
           whileTap={isClickable ? { scale: 1.08 } : {}}
           style={{
             width: "100%",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: `${PILL_GAP}px`,
+            borderRadius: "18px",
+            background: "linear-gradient(to top, #16a34a, #4ade80)",
+            boxShadow: hovered
+              ? "0 12px 28px rgba(34,197,94,0.4)"
+              : isSelected
+              ? "0 10px 30px rgba(34,197,94,0.35)"
+              : "0 8px 20px rgba(34,197,94,0.15)",
             transformOrigin: "bottom",
             position: "relative",
             zIndex: 1,
-            transition: "filter 0.2s ease",
+            transition: "box-shadow 0.2s ease",
+            overflow: "visible",
           }}
         >
-          {/* Pill 1 */}
-          <div style={{
-            width: "75%",
-            height: `${PILL_1_H}px`,
-            borderRadius: "999px",
-            background: tokens.colors.accent,
-            flexShrink: 0,
-          }} />
-          {/* Pill 2 */}
-          <div style={{
-            width: "88%",
-            height: `${PILL_2_H}px`,
-            borderRadius: "999px",
-            background: tokens.colors.accent,
-            flexShrink: 0,
-          }} />
-          {/* Main body */}
-          <div style={{
-            width: "100%",
-            height: `${bodyH}px`,
-            borderRadius: "16px",
-            background: tokens.colors.accent,
-            boxShadow: hovered
-              ? "0 12px 28px rgba(34,197,94,0.35)"
-              : isSelected
-              ? tokens.shadow.barSelected
-              : tokens.shadow.bar,
-            flexShrink: 0,
-            transition: "box-shadow 0.25s ease",
-          }} />
+          {/* Pill 1 — closer to top */}
+          <motion.div
+            animate={{
+              opacity: hovered ? 1 : 0,
+              y: hovered ? -2 : 2,
+            }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            style={{ ...pillStyle, top: "-10px" }}
+          />
+
+          {/* Pill 2 — further above */}
+          <motion.div
+            animate={{
+              opacity: hovered ? 0.7 : 0,
+              y: hovered ? -2 : 2,
+            }}
+            transition={{ duration: 0.18, delay: 0.04, ease: "easeOut" }}
+            style={{ ...pillStyle, top: "-22px", width: "55%" }}
+          />
         </motion.div>
       </div>
 
@@ -172,7 +179,7 @@ export function Bar({
         {label}
       </span>
 
-      {/* Hover tooltip */}
+      {/* Tooltip */}
       <AnimatePresence>
         {hovered && (
           <motion.div
@@ -182,7 +189,7 @@ export function Bar({
             transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
             style={{
               position: "absolute",
-              bottom: "calc(100% + 12px)",
+              bottom: "calc(100% + 16px)",
               left: "50%",
               transform: "translateX(-50%)",
               background: tokens.colors.card,
@@ -195,7 +202,6 @@ export function Bar({
               pointerEvents: "none",
             }}
           >
-            {/* Header */}
             <div style={{
               fontSize: "13px",
               fontWeight: 700,
@@ -207,7 +213,6 @@ export function Bar({
               {label}
             </div>
 
-            {/* Rows */}
             {BREAKDOWN.map((seg) => {
               const v = breakdown[seg.key];
               const pct = value > 0 ? Math.round((v / value) * 100) : 0;
@@ -221,12 +226,7 @@ export function Bar({
                 }}>
                   <span style={{ fontSize: "12px", color: tokens.colors.muted }}>{seg.label}</span>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span style={{
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: tokens.colors.text,
-                      fontVariantNumeric: "tabular-nums",
-                    }}>
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: tokens.colors.text, fontVariantNumeric: "tabular-nums" }}>
                       ${v.toLocaleString()}
                     </span>
                     <span style={{
@@ -245,7 +245,6 @@ export function Bar({
               );
             })}
 
-            {/* Total */}
             <div style={{
               display: "flex",
               justifyContent: "space-between",
@@ -255,12 +254,7 @@ export function Bar({
               borderTop: `1px solid ${tokens.colors.border}`,
             }}>
               <span style={{ fontSize: "12px", fontWeight: 600, color: tokens.colors.muted }}>Total</span>
-              <span style={{
-                fontSize: "13px",
-                fontWeight: 700,
-                color: tokens.colors.accentDark,
-                fontVariantNumeric: "tabular-nums",
-              }}>
+              <span style={{ fontSize: "13px", fontWeight: 700, color: tokens.colors.accentDark, fontVariantNumeric: "tabular-nums" }}>
                 ${value.toLocaleString()}
               </span>
             </div>
