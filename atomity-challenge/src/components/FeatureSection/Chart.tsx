@@ -8,6 +8,10 @@ interface BarItem {
   id: string;
   name: string;
   total: number;
+  cpu: number;
+  ram: number;
+  storage: number;
+  network: number;
 }
 
 interface Props {
@@ -22,33 +26,24 @@ export function Chart({ items, selectedId, level, onSelect }: Props) {
   const isPod = level === "pod";
 
   return (
-    <section
-      aria-label={`${level} cost chart`}
-      style={{
-        background: tokens.colors.surface,
-        border: `1px solid ${tokens.colors.border}`,
-        borderRadius: tokens.radius.lg,
-        padding: "clamp(16px, 3vw, 28px)",
-      }}
-    >
-      <p style={{ fontSize: "clamp(11px, 1.4vw, 13px)", color: tokens.colors.muted, marginBottom: "20px", margin: "0 0 20px" }}>
-        {isPod ? "Pod-level breakdown — no further drill-down" : "Click a bar to drill down"}
-      </p>
-
+    <section aria-label={`${level} cost chart`} style={{ position: "relative" }}>
       <AnimatePresence mode="wait">
         <motion.div
           key={items.map((i) => i.id).join(",")}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
           style={{
             display: "flex",
-            gap: "clamp(8px, 2vw, 16px)",
+            gap: "clamp(16px, 4vw, 40px)",
             alignItems: "flex-end",
             justifyContent: "flex-start",
             overflowX: "auto",
             paddingBottom: "4px",
+            paddingTop: "8px",
+            paddingLeft: "20px",
+            paddingRight: "20px",
           }}
         >
           {items.map((item, i) => (
@@ -63,10 +58,24 @@ export function Chart({ items, selectedId, level, onSelect }: Props) {
               isSelected={selectedId === item.id}
               isDimmed={selectedId !== null && selectedId !== item.id}
               onClick={() => onSelect(item.id)}
+              cpu={item.cpu}
+              ram={item.ram}
+              storage={item.storage}
+              network={item.network}
             />
           ))}
         </motion.div>
       </AnimatePresence>
+
+      <p style={{
+        margin: "12px 0 0",
+        fontSize: "11px",
+        color: tokens.colors.muted,
+        fontStyle: "italic",
+        paddingLeft: "20px",
+      }}>
+        {isPod ? "Pod-level — no further drill-down" : "Click a bar to drill down"}
+      </p>
     </section>
   );
 }

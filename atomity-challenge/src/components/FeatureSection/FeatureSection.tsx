@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { tokens } from "@/tokens";
 import { useCostData, ClusterData, NamespaceData } from "@/hooks/useCostData";
 import { Chart } from "./Chart";
 import { DataTable } from "./DataTable";
-import { Breadcrumb } from "./Breadcrumb";
 import { SkeletonChart, SkeletonTable } from "./Skeleton";
 
 type Level = "cluster" | "namespace" | "pod";
@@ -18,185 +17,236 @@ export default function FeatureSection() {
   const [path, setPath] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { items, breadcrumbLabels } = useMemo(() => {
-    if (!data) return { items: [], breadcrumbLabels: [] };
+  const { items, dynamicLabel, aggregatedBy } = useMemo(() => {
+    if (!data) return { items: [], dynamicLabel: "Cluster", aggregatedBy: "Cluster" };
 
-    if (level === "cluster") return { items: data, breadcrumbLabels: [] };
+    if (level === "cluster") {
+      return { items: data, dynamicLabel: "Cluster", aggregatedBy: "Cluster" };
+    }
 
     const cluster = data.find((c) => c.id === path[0]) as ClusterData;
-    if (!cluster) return { items: [], breadcrumbLabels: [] };
+    if (!cluster) return { items: [], dynamicLabel: "Cluster", aggregatedBy: "Cluster" };
 
     if (level === "namespace") {
-      return { items: cluster.namespaces, breadcrumbLabels: [cluster.name] };
+      return {
+        items: cluster.namespaces,
+        dynamicLabel: `${cluster.name} — Namespace`,
+        aggregatedBy: "Namespace",
+      };
     }
 
     const ns = cluster.namespaces.find((n) => n.id === path[1]) as NamespaceData;
-    if (!ns) return { items: [], breadcrumbLabels: [] };
+    if (!ns) return { items: [], dynamicLabel: "Cluster", aggregatedBy: "Cluster" };
 
-    return { items: ns.pods, breadcrumbLabels: [cluster.name, ns.name] };
+    return {
+      items: ns.pods,
+      dynamicLabel: `${cluster.name} — ${ns.name} — Pods`,
+      aggregatedBy: "Pod",
+    };
   }, [data, level, path]);
 
   function handleSelect(id: string) {
     setSelectedId(id);
     setTimeout(() => {
       setSelectedId(null);
-      if (level === "cluster") {
-        setPath([id]);
-        setLevel("namespace");
-      } else if (level === "namespace") {
-        setPath((p) => [p[0], id]);
-        setLevel("pod");
-      }
-    }, 350);
+      if (level === "cluster") { setPath([id]); setLevel("namespace"); }
+      else if (level === "namespace") { setPath((p) => [p[0], id]); setLevel("pod"); }
+    }, 380);
   }
 
-  function handleBreadcrumb(index: number) {
-    if (index < 0) { setLevel("cluster"); setPath([]); }
-    else if (index === 0) { setLevel("namespace"); setPath((p) => [p[0]]); }
+  function handleBack() {
     setSelectedId(null);
+    if (level === "pod") { setLevel("namespace"); setPath((p) => [p[0]]); }
+    else if (level === "namespace") { setLevel("cluster"); setPath([]); }
   }
 
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 40 }}
+    <motion.div
+      initial={{ opacity: 0, y: 48 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-80px" }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      aria-label="Cloud cost explorer"
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
       style={{
-        maxWidth: "960px",
+        maxWidth: "1000px",
         margin: "0 auto",
-        padding: "clamp(24px, 5vw, 64px) clamp(16px, 4vw, 32px)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "24px",
+        padding: "clamp(16px, 4vw, 40px) clamp(12px, 3vw, 24px)",
       }}
     >
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-        style={{ display: "flex", flexDirection: "column", gap: "6px" }}
-      >
-        <h2
-          style={{
-            margin: 0,
-            fontSize: "clamp(20px, 3vw, 28px)",
-            fontWeight: 700,
-            color: tokens.colors.text,
-            letterSpacing: "-0.02em",
-            lineHeight: 1.2,
-          }}
-        >
-          Cloud Cost Explorer
-        </h2>
-        <p style={{ margin: 0, fontSize: "clamp(13px, 1.6vw, 15px)", color: tokens.colors.muted }}>
-          Drill down from clusters → namespaces → pods
-        </p>
-      </motion.div>
+      {/* White card */}
+      <div style={{
+        background: tokens.colors.card,
+        borderRadius: tokens.radius.xl,
+        boxShadow: tokens.shadow.card,
+        border: `1px solid ${tokens.colors.border}`,
+        overflow: "hidden",
+      }}>
 
-      {/* Loading skeleton */}
-      {isLoading && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          style={{ display: "flex", flexDirection: "column", gap: "24px" }}
-        >
-          {/* fake breadcrumb */}
-          <div style={{ display: "flex", gap: "8px" }}>
-            {["80px", "60px", "60px"].map((w, i) => (
-              <motion.div
-                key={i}
-                animate={{ opacity: [0.4, 0.8, 0.4] }}
-                transition={{ duration: 1.6, repeat: Infinity, delay: i * 0.1, ease: "easeInOut" }}
-                style={{ width: w, height: "20px", borderRadius: "999px", background: tokens.colors.border }}
-              />
-            ))}
+        {/* ── Card Header ── */}
+        <div style={{
+          padding: "clamp(20px, 3vw, 32px) clamp(20px, 3vw, 32px) 0",
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+        }}>
+          {/* Top row: time filters left, back button right */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+            {/* Single time filter pill */}
+            <div style={{ display: "flex", gap: "6px" }}>
+              <span style={{
+                padding: "5px 14px",
+                borderRadius: "999px",
+                fontSize: "12px",
+                fontWeight: 600,
+                border: `1.5px solid ${tokens.colors.accent}`,
+                background: "rgba(74, 222, 128, 0.1)",
+                color: tokens.colors.accent,
+              }}>
+                Last 30 Days
+              </span>
+            </div>
+
+            {/* Back button */}
+            <AnimatePresence>
+              {level !== "cluster" && (
+                <motion.button
+                  initial={{ opacity: 0, x: 8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 8 }}
+                  onClick={handleBack}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    padding: "5px 12px",
+                    borderRadius: "999px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    border: `1.5px solid ${tokens.colors.border}`,
+                    background: "transparent",
+                    color: tokens.colors.muted,
+                    cursor: "pointer",
+                    transition: "all 0.18s",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = tokens.colors.accent;
+                    (e.currentTarget as HTMLButtonElement).style.color = tokens.colors.accentDark;
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = tokens.colors.border;
+                    (e.currentTarget as HTMLButtonElement).style.color = tokens.colors.muted;
+                  }}
+                >
+                  ← Back
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
-          <SkeletonChart />
-          <SkeletonTable />
-        </motion.div>
-      )}
 
-      {/* Error state */}
-      {isError && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "16px",
-            padding: "48px 24px",
-            border: `1px solid ${tokens.colors.border}`,
-            borderRadius: tokens.radius.lg,
-            background: tokens.colors.surface,
-            textAlign: "center",
-          }}
-        >
-          <span style={{ fontSize: "32px" }} aria-hidden>⚠️</span>
-          <p style={{ margin: 0, fontSize: "clamp(14px, 2vw, 16px)", color: tokens.colors.text, fontWeight: 600 }}>
-            Failed to load cost data
-          </p>
-          <p style={{ margin: 0, fontSize: "13px", color: tokens.colors.muted }}>
-            Check your connection and try again.
-          </p>
-          <button
-            onClick={() => refetch()}
-            style={{
-              padding: "8px 20px",
-              borderRadius: "999px",
-              border: `1px solid ${tokens.colors.accent}`,
-              background: "transparent",
-              color: tokens.colors.accent,
-              fontSize: "13px",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = tokens.colors.accentDim; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
-          >
-            Retry
-          </button>
-        </motion.div>
-      )}
-
-      {/* Main content */}
-      {data && (
-        <>
-          <Breadcrumb path={breadcrumbLabels} onNavigate={handleBreadcrumb} />
-
-          {/* Level pills */}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-            {(["cluster", "namespace", "pod"] as Level[]).map((l) => (
-              <motion.span
-                key={l}
-                layout
+          {/* Dynamic center label */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <AnimatePresence mode="wait">
+              <motion.h2
+                key={dynamicLabel}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                 style={{
-                  padding: "3px 10px",
-                  borderRadius: "999px",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  textTransform: "capitalize",
-                  background: level === l ? tokens.colors.accent : tokens.colors.surface,
-                  color: level === l ? tokens.colors.bg : tokens.colors.muted,
-                  border: `1px solid ${level === l ? tokens.colors.accent : tokens.colors.border}`,
-                  transition: "all 0.2s",
+                  margin: 0,
+                  fontSize: "clamp(18px, 2.5vw, 26px)",
+                  fontWeight: 700,
+                  color: tokens.colors.text,
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1.2,
                 }}
               >
-                {l}
-              </motion.span>
-            ))}
-          </div>
+                {dynamicLabel}
+              </motion.h2>
+            </AnimatePresence>
 
-          <Chart items={items} selectedId={selectedId} level={level} onSelect={handleSelect} />
-          <DataTable rows={items} level={level} />
-        </>
-      )}
-    </motion.section>
+            {/* Aggregated by badge */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={aggregatedBy}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "4px 10px",
+                  borderRadius: "999px",
+                  border: `1.5px solid ${tokens.colors.accent}`,
+                  background: tokens.colors.accentDim,
+                  width: "fit-content",
+                }}
+              >
+                <span style={{ fontSize: "11px", color: tokens.colors.accentDark }}>Aggregated by:</span>
+                <span style={{ fontSize: "11px", fontWeight: 700, color: tokens.colors.accentDark }}>{aggregatedBy}</span>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* ── Card Body ── */}
+        <div style={{ padding: "clamp(16px, 3vw, 28px) clamp(20px, 3vw, 32px) clamp(20px, 3vw, 32px)" }}>
+
+          {/* Loading */}
+          {isLoading && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+              <SkeletonChart />
+              <SkeletonTable />
+            </motion.div>
+          )}
+
+          {/* Error */}
+          {isError && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "14px",
+                padding: "48px 24px",
+                textAlign: "center",
+              }}
+            >
+              <span style={{ fontSize: "32px" }} aria-hidden>⚠️</span>
+              <p style={{ margin: 0, fontSize: "15px", fontWeight: 600, color: tokens.colors.text }}>Failed to load cost data</p>
+              <p style={{ margin: 0, fontSize: "13px", color: tokens.colors.muted }}>Check your connection and try again.</p>
+              <button
+                onClick={() => refetch()}
+                style={{
+                  padding: "8px 20px",
+                  borderRadius: "999px",
+                  border: `1.5px solid ${tokens.colors.accent}`,
+                  background: "transparent",
+                  color: tokens.colors.accentDark,
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Retry
+              </button>
+            </motion.div>
+          )}
+
+          {/* Main content */}
+          {data && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+              <Chart items={items} selectedId={selectedId} level={level} onSelect={handleSelect} />
+              <div style={{ borderTop: `1px solid ${tokens.colors.border}`, paddingTop: "24px" }}>
+                <DataTable rows={items} level={level} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
   );
 }
