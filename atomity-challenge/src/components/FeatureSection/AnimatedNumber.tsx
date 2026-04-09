@@ -8,29 +8,32 @@ interface Props {
   prefix?: string;
   suffix?: string;
   className?: string;
+  delay?: number; // stagger delay in seconds
 }
 
-export function AnimatedNumber({ value, prefix = "", suffix = "", className }: Props) {
+export function AnimatedNumber({ value, prefix = "", suffix = "", className, delay = 0 }: Props) {
   const ref = useRef<HTMLSpanElement>(null);
-  const prevRef = useRef<number>(0);
+  const prevRef = useRef<number | null>(null);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
 
-    const from = prevRef.current;
+    // Always count from 0 on first mount or when value resets context (drill-down)
+    const from = prevRef.current ?? 0;
     prevRef.current = value;
 
     const controls = animate(from, value, {
-      duration: 0.6,
-      ease: [0.22, 1, 0.36, 1],
+      duration: 0.75,
+      delay,
+      ease: [0.16, 1, 0.3, 1], // fast start, slight overshoot feel
       onUpdate(v) {
         el.textContent = `${prefix}${Math.round(v).toLocaleString()}${suffix}`;
       },
     });
 
     return () => controls.stop();
-  }, [value, prefix, suffix]);
+  }, [value, prefix, suffix, delay]);
 
   return (
     <span ref={ref} className={className}>

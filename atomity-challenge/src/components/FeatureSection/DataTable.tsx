@@ -77,11 +77,11 @@ export function DataTable({ rows, level }: Props) {
                 exit="hidden"
                 style={{ background: i % 2 === 0 ? tokens.colors.card : tokens.colors.surface }}              >
                 <td style={{ ...tdStyle, fontWeight: 600, color: tokens.colors.text }}>{row.name}</td>
-                <td style={tdStyle}><AnimatedNumber value={row.cpu} prefix="$" /></td>
-                <td style={tdStyle}><AnimatedNumber value={row.ram} prefix="$" /></td>
-                <td style={tdStyle}><AnimatedNumber value={row.storage} prefix="$" /></td>
-                <td style={tdStyle}><AnimatedNumber value={row.network} prefix="$" /></td>
-                <td style={tdStyle}><AnimatedNumber value={gpu(row)} prefix="$" /></td>
+                <td style={tdStyle}><AnimatedNumber value={row.cpu} prefix="$" delay={i * 0.04} /></td>
+                <td style={tdStyle}><AnimatedNumber value={row.ram} prefix="$" delay={i * 0.04 + 0.05} /></td>
+                <td style={tdStyle}><AnimatedNumber value={row.storage} prefix="$" delay={i * 0.04 + 0.1} /></td>
+                <td style={tdStyle}><AnimatedNumber value={row.network} prefix="$" delay={i * 0.04 + 0.15} /></td>
+                <td style={tdStyle}><AnimatedNumber value={gpu(row)} prefix="$" delay={i * 0.04 + 0.2} /></td>
                 <td style={tdStyle}>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <div style={{
@@ -101,7 +101,7 @@ export function DataTable({ rows, level }: Props) {
                     <span style={{ fontSize: "11px", color: tokens.colors.muted }}>{efficiency(row)}%</span>
                   </div>
                 </td>
-                <td style={tdTotalStyle}><AnimatedNumber value={row.total} prefix="$" /></td>
+                <td style={tdTotalStyle}><AnimatedNumber value={row.total} prefix="$" delay={i * 0.04 + 0.25} /></td>
               </motion.tr>
             ))}
           </motion.tbody>

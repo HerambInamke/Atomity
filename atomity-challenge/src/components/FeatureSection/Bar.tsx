@@ -86,7 +86,7 @@ export function Bar({
         fontWeight: hovered ? 700 : 500,
         transition: "color 0.15s",
       }}>
-        <AnimatedNumber value={value} prefix="$" />
+        <AnimatedNumber key={value} value={value} prefix="$" delay={index * 0.06} />
       </span>
 
       {/* Track */}
